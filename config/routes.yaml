@@ -3,3 +3,27 @@ controllers:
         path: ../src/Controller/
         namespace: App\Controller
     type: attribute
+
+index:
+    path: /index
+    controller: App/Controller/NumberConversionController::index
+
+conversor:
+    path: /number/conversor
+    controller: App/Controller/NumberConversionController::conversor
+
+arabicToRoman:
+    path: /number/roman
+    controller: App\Controller\NumberConversionController::convertRoman
+
+romanToArabic:
+    path: /number/arabic
+    controller: App\Controller\NumberConversionController::convertArabic
+
+heatmap:
+    path: /heatmap
+    controller: App\Controller\HeatMapController::index
+
+heatmapUpdate:
+    path: /heatmap/update
+    controller: App\Controller\HeatMapController::update

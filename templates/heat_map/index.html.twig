@@ -1,0 +1,208 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}HeatMap{% endblock %}
+{% block body %}
+<style>
+    table {
+        width: 22%;
+        align: left;
+        border-collapse: collapse;
+    }
+    th, td {
+        border: 1px solid black;
+        padding: 10px;
+        text-align: center;
+    }
+    input {
+        width: 60px;
+        text-align: center;
+        font-size: 16px;
+    }
+</style>
+
+<div class="container text-center">
+  <div class="row align-items-start">
+    <div class="col">
+        <h2 style="text-align: left;">Vendas de veículos</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Marcas</th>
+                    <th>Vendas 2023</th>
+                    <th>Vendas 2024</th>
+                    <th>Percentual</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for marca, vendas_2024 in vendas_2024 %}
+                    <tr>
+                        <td>{{ marca }}</td>
+                        <td>{{ vendas_2023[marca] }}</td>
+                        <td>
+                            <input type="number" value="{{ vendas_2024 }}"
+                            data-marca="{{ marca }}"
+                            onchange="update(this)">
+                        </td>
+                        <td id="percentual-{{ marca }}">{{ percentuais[marca]|number_format (2, '.', '') }}%</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="col">    
+        <h2 style="text-align: center;">HeatMap de vendas</h2>
+
+        <div id="heatmap-container" style="width: 408px; height: 607px; position: relative; background-color: lightgray; border: 4px solid black;">
+        </div>
+    </div>
+  </div>
+</div>
+
+    <h3>Total de vendas em 2024: <span id="total-vendas">{{ total_vendas }}</span></h3>
+    
+    <script>
+    //Função para alterar os valores da tabela de vendas
+        function update(input) {
+            let marca = input.dataset.marca;
+            let novoValor = parseInt(input.value);
+            let totalVendas = 0;
+
+            document.querySelectorAll("input[type=number]").forEach(input => {
+                totalVendas += parseInt(input.value);
+            });
+
+            document.querySelectorAll("input[type=number]").forEach(input => {
+                let marca = input.dataset.marca;
+                let vendas = parseInt(input.value);
+                let percentual = (vendas / totalVendas) * 100;
+                document.getElementById("percentual-" + marca).textContent = percentual.toFixed(2) + "%";  // Atualiza o percentual na tela
+            });
+
+            document.getElementById("total-vendas").textContent = totalVendas;
+
+            const venda = vendasPercentuais.find(v => v.marca === marca);
+            if (venda) {
+                venda.vendas_2024 = novoValor;
+                venda.percentual = (venda.vendas_2024 / totalVendas) *100;
+            }
+
+            drawHeatMap(vendasPercentuais);
+
+            fetch("/heatmap/update", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ marca: marca, vendas: novoValor }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log("Resposta do servidor: ", data);
+            })
+            .catch(error => {
+                console.error("Erro ao atualizar vendas:", error);
+            });
+        }
+
+        //Função para preencher o heatmap
+        function drawHeatMap(vendasPercentuais) {
+            const container = document.getElementById("heatmap-container");
+            container.innerHTML = "";
+
+            const squareWidth = 2;
+            const squareHeight = 3;
+            const squaresPerRow = 200;
+            const totalSquares = 200 * 200;
+
+            container.style.display = "grid";
+            container.style.gridTemplateColumns = `repeat(${squaresPerRow}, ${squareWidth}px)`;
+            container.style.gridTemplateRows = `repeat(${squaresPerRow} , ${squareHeight}px)`;
+            container.style.gap = "0";
+
+            vendasPercentuais.forEach((venda) => {
+                const numQuadrados = Math.round((venda.percentual / 100) * totalSquares);
+
+                const squaresToDraw = numQuadrados;
+
+                const cor = definirCorHeatMap(venda.vendas_2023, venda.vendas_2024);
+
+                let drawnSquares = 0;
+                let startIndex = null;
+                let endIndex = null;
+
+                for (let i = 0; i < squaresToDraw; i++) {
+                        const square = document.createElement("div");
+                        square.style.width = `${squareWidth}px`;
+                        square.style.height = `${squareHeight}px`;
+                        square.style.backgroundColor = cor;
+                        square.style.position = "relative";
+
+                        const rowIndex = Math.floor(i / squaresPerRow);
+                        const colIndex = i % squaresPerRow;
+                        
+                        if (drawnSquares === 0) startIndex = i;
+                    
+                        if (drawnSquares === squaresToDraw - 1) endIndex = i;
+
+                        const brandName = document.createElement("span");
+                        brandName.textContent = venda.marca;
+                        brandName.style.position = "absolute";
+                        brandName.style.top = "50%";
+                        brandName.style.left = "50%";
+                        brandName.style.transform = "translate(-50%, -50%)";
+                        brandName.style.fontSize = "10px";
+                        brandName.style.color = "white";
+                        brandName.style.fontWeight = "bold";
+                        brandName.style.textShadow = "1px 1px 3px rgba(0,0,0,0.5)";  // Melhora a legibilidade
+
+                        if (drawnSquares === Math.floor(numQuadrados / 2)) {
+                            const row = Math.floor(startIndex / squaresPerRow);
+                            const col = startIndex % squaresPerRow;
+
+                            brandName.style.position = "absolute";
+                            brandName.style.top = `${(row * squareHeight) + squareHeight / 2 - 10}px`;
+                            brandName.style.left = `${(col * squareWidth) + squareWidth / 2 - 10}px`;
+                            
+                            square.appendChild(brandName);
+                        }
+
+                        container.appendChild(square);
+                        drawnSquares++;
+                    }
+                });
+            }
+        
+
+        function definirCorHeatMap(vendas_2023, vendas_2024) {
+            const variacao = ((vendas_2024 - vendas_2023) / vendas_2023) * 100;
+
+            if (variacao === 0) {
+                return "gray";
+            } else if (variacao > 0){
+                if (variacao <= 3) return "lightgreen";
+                if (variacao <= 7) return "green";
+                return "darkgreen";
+            } else {
+                if (variacao >= -3) return "pink";
+                if (variacao >= -7) return "red";
+                return "darkred";
+            }
+        }
+
+       let vendasPercentuais = [
+            {% for marca, percentual in percentuais %}
+                {
+                    marca: "{{ marca }}",
+                    percentual: {{ percentual | number_format(2, '.', '') }},
+                    vendas_2023: {{ vendas_2023[marca] }},
+                    vendas_2024: {{ vendas_2024[marca] }}
+                },
+            {% endfor %}
+        ];
+
+
+    drawHeatMap(vendasPercentuais);
+
+    </script>
+
+{% endblock %}

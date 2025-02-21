@@ -1,0 +1,57 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Number Conversion{% endblock %}
+
+{% block body %}
+<div>
+
+<h2>Conversão de números Arábicos para Romanos</h2><br>
+<input type="text" id="inputArabico" class="form-control" placeholder="Digite o número aqui"><br>
+<button type="button" class="btn btn-dark" onclick="convertRoman()">Converter para Romano</button><br><br>
+<p id="resultadoRomano"></p><br>
+
+<h2>Conversão de números Romanos para Arábicos</h2><br>
+<input type="text" id="inputRomano" class="form-control" placeholder="Digite o número aqui"><br>
+<button type="button" class="btn btn-dark" onclick="convertArabic()">Converter para Arábico</button><br><br>
+<p id="resultadoArabico"></p><br>
+
+<script>
+    function convertRoman() {
+        let formData = new FormData();
+        formData.append("number", document.getElementById("inputArabico").value);
+
+        fetch("/number/roman", {
+            method: "POST",
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                document.getElementById("resultadoRomano").innerHTML = "<span style='color: red;'>" + data.error + "</span>";
+            } else {
+                document.getElementById("resultadoRomano").innerHTML = "Resultado: " + data.result;
+            }          
+        });
+    }
+
+    function convertArabic() {
+        let formData = new FormData();
+        formData.append("number", document.getElementById("inputRomano").value);
+
+        fetch("/number/arabic", {
+            method: "POST",
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                document.getElementById("resultadoArabico").innerHTML = "<span style='color: red;'>" + data.error + "</span>";
+            } else {
+                document.getElementById("resultadoArabico").innerHTML = "Resultado: " + data.result;
+            }         
+        });
+    }
+</script>
+
+</div>
+{% endblock %}
